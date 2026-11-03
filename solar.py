@@ -70,8 +70,12 @@ st.subheader("📈 Performance Characteristic Curves (I-V & P-V)")
 
 v_vec = np.linspace(0, voc_total, 300)
 # Empirical diode approximation model for solar cell I(V) characteristics
-m_factor = np.log(1 - (impp_total / isc_total)) / np.log(vmpp_total / voc_total) if (impp_total < isc_total and vmpp_total < voc_total) else 5.0
-i_vec = np.maximum(0, isc_total * (1 - (v_vec / voc_total)**m_factor))
+m_factor = (
+    np.log(1 - (impp_total / isc_total)) / np.log(vmpp_total / voc_total)
+    if (impp_total < isc_total and vmpp_total < voc_total)
+    else 5.0
+)
+i_vec = np.maximum(0, isc_total * (1 - (v_vec / voc_total) ** m_factor))
 p_vec = v_vec * i_vec
 
 # Interactive Plotly Figure
@@ -94,27 +98,49 @@ fig.add_trace(go.Scatter(
     yaxis='y2'
 ))
 
-# Highlight Maximum Power Point (MPP)
+# Highlight Maximum Power Point (MPP) on the I-V curve
 fig.add_trace(go.Scatter(
     x=[vmpp_total], y=[impp_total],
     mode='markers',
-    name='Max Power Point (MPP)',
+    name='MPP (I-V)',
     marker=dict(size=12, color='red', symbol='star')
+))
+
+# Highlight Maximum Power Point (MPP) on the P-V curve
+fig.add_trace(go.Scatter(
+    x=[vmpp_total], y=[pmax_total],
+    mode='markers',
+    name='MPP (P-V)',
+    marker=dict(size=12, color='red', symbol='star'),
+    yaxis='y2'
 ))
 
 fig.update_layout(
     title="Solar Cell Array Performance Output",
     xaxis=dict(title="Voltage (V)"),
-    yaxis=dict(title="Current (A)", titlefont=dict(color="#1f77b4"), tickfont=dict(color="#1f77b4")),
-    yaxis2=dict(title="Power (W)", titlefont=dict(color="#ff7f0e"), tickfont=dict(color="#ff7f0e"), overlaying="y", side="right"),
+    yaxis=dict(
+        title=dict(text="Current (A)", font=dict(color="#1f77b4")),
+        tickfont=dict(color="#1f77b4")
+    ),
+    yaxis2=dict(
+        title=dict(text="Power (W)", font=dict(color="#ff7f0e")),
+        tickfont=dict(color="#ff7f0e"),
+        overlaying="y",
+        side="right"
+    ),
     hovermode="x unified",
     legend=dict(x=0.01, y=0.99, bgcolor='rgba(255,255,255,0.6)')
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 # Summary Comparison Dataframe
 st.subheader("📋 Performance Parameter Breakdown")
+single_ff = (
+    ((vmpp_cell * impp_single) / (voc_cell * isc_single)) * 100
+    if (voc_cell * isc_single) > 0 else 0
+)
+
 summary_df = pd.DataFrame({
     "Electrical Parameter": [
         "Open-Circuit Voltage (Voc)",
@@ -131,7 +157,7 @@ summary_df = pd.DataFrame({
         f"{vmpp_cell:.2f} V",
         f"{impp_single*1000:.1f} mA",
         f"{vmpp_cell*impp_single:.3f} W",
-        f"{((vmpp_cell*impp_single)/(voc_cell*isc_single))*100:.1f}%",
+        f"{single_ff:.1f}%",
         f"{area_cell} cm²"
     ],
     "Total Array Level": [
@@ -145,4 +171,4 @@ summary_df = pd.DataFrame({
     ]
 })
 
-st.dataframe(summary_df, use_container_width=True)
+st.dataframe(summary_df, width="stretch")
